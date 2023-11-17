@@ -12,10 +12,6 @@ def index(request):
     return Response(
         {
             "data": [
-                {"name": "Lei Song",
-                 "address": "123 Carrington Road",
-                 "phone": "1233242"
-                 },
                 {"name": "Chris",
                  "address": "123 Carrington Road",
                  "phone": "1233242"
@@ -25,15 +21,15 @@ def index(request):
     )
 
 
-@api_view(["GET"])
-def semester_list(request):
-    if request.method == "GET":
-        semesters = Semester.objects.all()
-        serializer = SemesterSerializer(semesters, many=True)
-        return Response(serializer.data)
-    if request.method == "POST":
-        serializer = SemesterSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+# @api_view(["GET"])
+# def semester_list(request):
+#     if request.method == "GET":
+#         semesters = Semester.objects.all()
+#         serializer = SemesterSerializer(semesters, many=True)
+#         return Response(serializer.data)
+#     if request.method == "POST":
+#         serializer = SemesterSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors)
