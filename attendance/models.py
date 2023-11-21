@@ -19,7 +19,7 @@ class Course(models.Model):
 
 
 class Lecturer(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="lecturer")
     staff_id = models.BigIntegerField(primary_key=True, db_column='staff_id', unique=True)
     username = models.CharField(max_length=255)
     first_name = models.CharField(max_length=255, blank=True, null=True, default='')
@@ -36,7 +36,7 @@ class ClassDivided(models.Model):
     semester = models.ForeignKey(Semester, on_delete=models.SET_NULL, null=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     class_number = models.PositiveIntegerField()
-    lecturer = models.ForeignKey(Lecturer, on_delete=models.CASCADE,related_name="taught_classes")
+    lecturer = models.ForeignKey(Lecturer, on_delete=models.CASCADE, related_name="taught_classes")
 
     def __str__(self):
         return str(self.semester) + " - " + str(self.course) + " - " + "Class " + str(self.class_number)
@@ -55,7 +55,7 @@ class CollegeDay(models.Model):
 
 
 class Student(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="student")
     student_id = models.BigIntegerField(primary_key=True, db_column='student_id', unique=True)
     username = models.CharField(max_length=255)
     first_name = models.CharField(max_length=255, blank=True, null=True, default='')
