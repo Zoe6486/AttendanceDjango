@@ -13,18 +13,8 @@ class SemesterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "password"]
-
-        extra_kwargs = {
-            "password": {
-                "write_only": True,
-                "required": True
-            }
-        }
-
-    def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-        return user
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password']
+        # extra_kwargs = {'password': {'write_only': True, "required": False}}
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -36,7 +26,7 @@ class CourseSerializer(serializers.ModelSerializer):
 class LecturerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lecturer
-        fields = "__all__"
+        fields = ['staff_id', 'username', 'first_name', 'last_name', 'email', 'dob', 'user']
 
 
 class ClassDividedSerializer(serializers.ModelSerializer):
