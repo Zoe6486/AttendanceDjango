@@ -44,7 +44,7 @@ class CollegeDaySerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = "__all__"
+        fields = ['student_id', 'username', 'first_name', 'last_name', 'email', 'dob', 'enrolled_classes', 'user']
 
 
 class AttendanceSerializer(serializers.ModelSerializer):

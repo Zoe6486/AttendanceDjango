@@ -1,7 +1,9 @@
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User, Group
+from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
@@ -141,46 +143,123 @@ class StudentViewSet(viewsets.ModelViewSet):
     serializer_class = StudentSerializer
     permission_classes = (AllowAny,)
 
-    def perform_create(self, serializer):
-        user = serializer.validated_data["user"]
-        user.set_password(serializer.validated_data["password"])
+    def create(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        email = request.data.get('email')
+        password = request.data.get('password')
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+
+        # Create the user
+        user, created = User.objects.get_or_create(username=username,
+                                                   defaults={'email': email, 'password': make_password(password),
+                                                             'first_name': first_name, 'last_name': last_name})
+
+        # Add the user to the "student_user" group if needed
+        student_group, created = Group.objects.get_or_create(name='student_user')
+        user.groups.add(student_group)
+
+        request.data['user'] = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        }
+        user.set_password(password)
         user.save()
-        student = serializer.save()
 
-        enrolled_classes = serializer.validated_data.get("enrolled_classes", [])
-        for enrolled_class in enrolled_classes:
-            scheduled_college_days = enrolled_class.scheduled_collegeDays.all()
-            for college_day in scheduled_college_days:
-                Attendance.objects.get_or_create(
-                    attendance_student=student,
-                    attendance_day=college_day,
-                    attendance_class=enrolled_class,
-                    defaults={"is_present": False},
-                )
+        student_data = {
+            'student_id': request.data.get('student_id'),
+            'username': request.data.get('username'),
+            'first_name': request.data.get('first_name'),
+            'last_name': request.data.get('last_name'),
+            'email': request.data.get('email'),
+            'dob': request.data.get('dob'),
+            'user': user.id,
+            'enrolled_classes': request.data.get('enrolled_classes', []),
+        }
+        student_serializer = StudentSerializer(data=student_data)
+        if student_serializer.is_valid():
+            student = student_serializer.save()
 
-    def perform_update(self, serializer):
-        user = serializer.validated_data["user"]
-        if "password" in serializer.validated_data:
-            user.set_password(serializer.validated_data["password"])
-            user.save()
-        serializer.save()
+            enrolled_classes = student_serializer.validated_data.get("enrolled_classes")
+            for enrolled_class in enrolled_classes:
+                scheduled_college_days = enrolled_class.scheduled_collegeDays.all()
+                for college_day in scheduled_college_days:
+                    Attendance.objects.create(
+                        attendance_student=student,
+                        attendance_day=college_day,
+                        attendance_class=enrolled_class,
+                        is_present=False,
+                    )
 
-        enrolled_classes = serializer.validated_data.get("enrolled_classes", [])
-        Attendance.objects.filter(attendance_student=serializer.instance).delete()
-        for enrolled_class in enrolled_classes:
-            scheduled_college_days = enrolled_class.scheduled_collegeDays.all()
-            for college_day in scheduled_college_days:
-                Attendance.objects.create(
-                    attendance_student=serializer.instance,
-                    attendance_day=college_day,
-                    attendance_class=enrolled_class,
-                    is_present=False,
-                )
+            return Response(student_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(student_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def perform_destroy(self, instance):
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        # Update user information
+        user_data = request.data.get('user', {})
+        instance.user.username = user_data.get('username', instance.user.username)
+        instance.user.email = user_data.get('email', instance.user.email)
+        instance.user.first_name = user_data.get('first_name', instance.user.first_name)
+        instance.user.last_name = user_data.get('last_name', instance.user.last_name)
+        password = user_data.get('password')
+        if password:
+            instance.user.set_password(password)
+        instance.user.save()
+
+        # Update student information
+        student_data = {
+            'student_id': request.data.get('student_id', instance.student_id),
+            'username': request.data.get('username', instance.username),
+            'first_name': request.data.get('first_name', instance.first_name),
+            'last_name': request.data.get('last_name', instance.last_name),
+            'email': request.data.get('email', instance.email),
+            'dob': request.data.get('dob', instance.dob),
+            'user': instance.user.id,
+            'enrolled_classes': request.data.get('enrolled_classes', instance.enrolled_classes),
+        }
+        student_serializer = StudentSerializer(instance, data=student_data, partial=True)
+        if student_serializer.is_valid():
+            student = student_serializer.save()
+
+            # Update enrolled classes and attendance
+            updated_enrolled_classes = set(
+                enrolled_class.id for enrolled_class in student_serializer.validated_data.get("enrolled_classes", []))
+
+            # Remove attendance records for classes no longer in the updated list
+            outdated_enrolled_classes = set(
+                instance.enrolled_classes.all().values_list('id', flat=True)) - updated_enrolled_classes
+            Attendance.objects.filter(attendance_student=student,
+                                      attendance_class__in=outdated_enrolled_classes).delete()
+
+            # Create or update attendance records for the updated list of classes
+            for enrolled_class in student_serializer.validated_data.get("enrolled_classes", []):
+                scheduled_college_days = enrolled_class.scheduled_collegeDays.all()
+                for college_day in scheduled_college_days:
+                    Attendance.objects.get_or_create(
+                        attendance_student=student,
+                        attendance_day=college_day,
+                        attendance_class=enrolled_class,
+                        defaults={'is_present': False},
+                    )
+
+            return Response(student_serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(student_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
         user = instance.user
+        self.perform_destroy(instance)
         user.delete()
-        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AttendanceViewSet(viewsets.ModelViewSet):

@@ -70,19 +70,14 @@ class Student(models.Model):
 
 
 class Attendance(models.Model):
-    attendance_student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, related_name="attendances")
-    attendance_day = models.ForeignKey(CollegeDay, on_delete=models.SET_NULL, null=True)
-    attendance_class = models.ForeignKey(ClassDivided, on_delete=models.SET_NULL, null=True)
+    attendance_student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, related_name="attendances")
+    attendance_day = models.ForeignKey(CollegeDay, on_delete=models.CASCADE, null=True)
+    attendance_class = models.ForeignKey(ClassDivided, on_delete=models.CASCADE, null=True)
     is_present = models.BooleanField(default=False)
 
     def __str__(self):
         if self.is_present:
-            str(self.attendance_student) + " is Present"
+            return " Present"
         else:
-            str(self.attendance_student) + " is Absent"
+            return " Absent"
 
-# class ScheduledClass(models.Model):
-#     college_day = models.ForeignKey(CollegeDay, on_delete=models.CASCADE)
-#     class_name = models.ForeignKey(ClassDivided, on_delete=models.CASCADE, null=True)
-#     attended_students = models.ManyToManyField(Student, blank=True,
-#                                                related_name="attended_scheduled_classes")
