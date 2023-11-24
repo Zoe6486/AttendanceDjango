@@ -2,7 +2,7 @@ from django.contrib.auth.models import User, Group
 from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-from rest_framework.decorators import api_view, authentication_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -28,6 +28,7 @@ def index(request):
 
 
 @api_view(['GET'])
+# @permission_classes([IsAuthenticated])
 @authentication_classes([SessionAuthentication, TokenAuthentication])
 def get_user_id(request):
     user = request.user

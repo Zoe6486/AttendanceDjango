@@ -229,15 +229,18 @@ class StudentViewSet(viewsets.ModelViewSet):
         if student_serializer.is_valid():
             student = student_serializer.save()
 
-            # Update enrolled classes and attendance
-            updated_enrolled_classes = set(
-                enrolled_class.id for enrolled_class in student_serializer.validated_data.get("enrolled_classes", []))
+            # Remove all attendance records for the student
+            Attendance.objects.filter(attendance_student=student).delete()
 
-            # Remove attendance records for classes no longer in the updated list
-            outdated_enrolled_classes = set(
-                instance.enrolled_classes.all().values_list('id', flat=True)) - updated_enrolled_classes
-            Attendance.objects.filter(attendance_student=student,
-                                      attendance_class__in=outdated_enrolled_classes).delete()
+            # # Update enrolled classes and attendance
+            # updated_enrolled_classes = set(
+            #     enrolled_class.id for enrolled_class in student_serializer.validated_data.get("enrolled_classes", []))
+            #
+            # # Remove attendance records for classes no longer in the updated list
+            # outdated_enrolled_classes = set(
+            #     instance.enrolled_classes.all().values_list('id', flat=True)) - updated_enrolled_classes
+            # Attendance.objects.filter(attendance_student=student,
+            #                           attendance_class__in=outdated_enrolled_classes).delete()
 
             # Create or update attendance records for the updated list of classes
             for enrolled_class in student_serializer.validated_data.get("enrolled_classes", []):

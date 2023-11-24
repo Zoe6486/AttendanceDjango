@@ -30,9 +30,13 @@ class LecturerSerializer(serializers.ModelSerializer):
 
 
 class ClassDividedSerializer(serializers.ModelSerializer):
+    semester = serializers.StringRelatedField()  # Use StringRelatedField to represent related model as string
+    course = serializers.StringRelatedField()
+    class_number = serializers.IntegerField()
+    lecturer = serializers.StringRelatedField()
     class Meta:
         model = ClassDivided
-        fields = "__all__"
+        fields = ['id', 'semester', 'course', 'class_number', 'lecturer']
 
 
 class CollegeDaySerializer(serializers.ModelSerializer):
